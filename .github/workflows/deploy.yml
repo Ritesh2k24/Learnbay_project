@@ -2,7 +2,7 @@ name: Deploy Employee Portfolio Infra
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   deploy:
