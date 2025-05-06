@@ -1,6 +1,15 @@
 resource "aws_s3_bucket" "portfolio" {
   bucket = "employee-portfolio-site-${random_id.suffix.hex}"
-  object_ownership = "BucketOwnerEnforced"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_ownership_controls" "ownership" {
+  bucket = aws_s3_bucket.portfolio.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+
+  }
 
   website {
     index_document = "index.html"
