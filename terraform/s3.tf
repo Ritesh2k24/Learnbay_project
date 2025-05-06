@@ -1,6 +1,6 @@
 resource "aws_s3_bucket" "portfolio" {
   bucket = "employee-portfolio-site-${random_id.suffix.hex}"
-  acl    = "public-read"
+  object_ownership = "BucketOwnerEnforced"
 
   website {
     index_document = "index.html"
