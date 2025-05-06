@@ -45,3 +45,12 @@ data "aws_iam_policy_document" "allow_public_read" {
 resource "random_id" "suffix" {
   byte_length = 4
 }
+
+resource "aws_s3_bucket_public_access_block" "allow_public_access" {
+  bucket = aws_s3_bucket.portfolio.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
