@@ -34,5 +34,5 @@ resource "aws_lambda_function" "visitor_logger" {
   handler          = "visitor_logger.lambda_handler"
   runtime          = "python3.9"
   role             = aws_iam_role.lambda_exec.arn
-  source_code_hash = filebase64sha256("${path.module}/lambda_zips/visitor_logger.zip")
+  source_code_hash = filebase64sha256("${path.module}/lambda/visitor_logger.zip")
 }
