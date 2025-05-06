@@ -9,10 +9,6 @@ override.tf
 override.tf.json
 .terraform.lock.hcl
 
-# Ignore Lambda zip packages
-lambda_zips/
-*.zip
-
 # Ignore Python cache (Lambda code)
 __pycache__/
 *.pyc
