@@ -53,8 +53,8 @@ resource "aws_sns_topic_subscription" "email_alert" {
   endpoint  = "pawar.ritesh2018@gmail.com"
 }
 
-resource "aws_cloudwatch_metric_alarm" "contact_lambda_errors" {
-  alarm_name          = "ContactLambdaErrorAlarm"
+resource "aws_cloudwatch_metric_alarm" "contact_lambda_errors_secondary" {
+  alarm_name          = "ContactLambdaErrorAlarmSecondary"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "Errors"
