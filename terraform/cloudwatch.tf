@@ -64,7 +64,7 @@ resource "aws_cloudwatch_metric_alarm" "contact_lambda_errors_secondary" {
   threshold           = 1
   alarm_description   = "Alarm when contact Lambda function errors > 1 in 5 minutes"
   dimensions = {
-    FunctionName = aws_lambda_function.contact_handler.function_name
+    FunctionName = aws_lambda_function.contact_form_handler.function_name
   }
   alarm_actions = [aws_sns_topic.alerts.arn]
 }
