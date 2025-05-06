@@ -10,17 +10,18 @@ resource "aws_s3_bucket_ownership_controls" "ownership" {
     object_ownership = "BucketOwnerEnforced"
 
   }
+}
 
   website {
     index_document = "index.html"
     error_document = "error.html"
-  }
+}
 
   tags = {
     Name        = "EmployeePortfolio"
     Environment = "prod"
-  }
 }
+
 
 resource "aws_s3_bucket_policy" "portfolio_policy" {
   bucket = aws_s3_bucket.portfolio.id
