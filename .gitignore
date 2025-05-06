@@ -1,0 +1,22 @@
+# Ignore Terraform state and backup files
+*.tfstate
+*.tfstate.*
+.crash
+.terraform/
+terraform.tfvars
+terraform.tfvars.json
+override.tf
+override.tf.json
+.terraform.lock.hcl
+
+# Ignore Lambda zip packages
+lambda_zips/
+*.zip
+
+# Ignore Python cache (Lambda code)
+__pycache__/
+*.pyc
+
+# Ignore VSCode settings and OS files
+.vscode/
+.DS_Store
