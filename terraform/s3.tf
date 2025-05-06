@@ -1,16 +1,6 @@
 resource "aws_s3_bucket" "portfolio" {
-  bucket = "employee-portfolio-site-${random_id.suffix.hex}"
+  bucket        = "employee-portfolio-site-${random_id.suffix.hex}"
   force_destroy = true
-}
-
-resource "aws_s3_bucket_ownership_controls" "ownership" {
-  bucket = aws_s3_bucket.portfolio.id
-
-  rule {
-    object_ownership = "BucketOwnerEnforced"
-
-  }
-}
 
   website {
     index_document = "index.html"
@@ -21,6 +11,16 @@ resource "aws_s3_bucket_ownership_controls" "ownership" {
     Name        = "EmployeePortfolio"
     Environment = "prod"
   }
+}
+
+resource "aws_s3_bucket_ownership_controls" "ownership" {
+  bucket = aws_s3_bucket.portfolio.id
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
 
 
 resource "aws_s3_bucket_policy" "portfolio_policy" {
