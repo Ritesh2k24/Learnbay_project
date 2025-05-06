@@ -19,7 +19,7 @@ resource "aws_iam_role_policy_attachment" "lambda_dynamo_access" {
 }
 
 resource "aws_lambda_function" "contact_form_handler" {
-  filename         = "${path.module}/lambda/contact_handler.zip"
+  filename         = "lambda/contact_handler.zip"
   function_name    = "contactFormHandler"
   handler          = "contact_handler.lambda_handler"
   runtime          = "python3.9"
@@ -29,7 +29,7 @@ resource "aws_lambda_function" "contact_form_handler" {
 
 
 resource "aws_lambda_function" "visitor_logger" {
-  filename         = "${path.module}/lambda/visitor_logger.zip"
+  filename         = "lambda/visitor_logger.zip"
   function_name    = "visitorLogger"
   handler          = "visitor_logger.lambda_handler"
   runtime          = "python3.9"
