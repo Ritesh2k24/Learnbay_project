@@ -7,18 +7,22 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install jq (for JSON parsing)
-        run: sudo apt-get install -y jq
+      - name: Setup dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq unzip
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.7
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -27,102 +31,119 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Zip Lambda functions
+      - name: Prepare Lambda packages
         run: |
           mkdir -p lambda_zips
           zip -j lambda_zips/contact_handler.zip lambda/contact_handler.py
           zip -j lambda_zips/visitor_logger.zip lambda/visitor_logger.py
+          echo "Lambda packages created"
 
       - name: Terraform Init
         run: |
           cd terraform
-          terraform init
+          terraform init -input=false
+
+      - name: Terraform Validate
+        run: |
+          cd terraform
+          terraform validate
 
       - name: Terraform Plan
         run: |
           cd terraform
-          terraform plan
+          terraform plan -input=false -out=tfplan
 
       - name: Terraform Apply
         run: |
           cd terraform
-          terraform apply -auto-approve
+          terraform apply -input=false -auto-approve tfplan
 
-      - name: Set and Verify Terraform Outputs
+      - name: Get Terraform Outputs
         id: tf-outputs
         run: |
           cd terraform
-          # Get raw JSON output
-          terraform output -json > outputs.json
+          # Get state in JSON format (more reliable than output)
+          terraform show -json > tfstate.json
           
-          # Extract values safely
-          API_URL=$(jq -r '.analytics_api_url.value' outputs.json)
-          S3_BUCKET_NAME=$(jq -r '.s3_bucket_name.value' outputs.json)
+          # Extract values with full validation
+          API_URL=$(jq -r '.values.outputs.analytics_api_url.value' tfstate.json)
+          S3_BUCKET_NAME=$(jq -r '.values.outputs.s3_bucket_name.value' tfstate.json)
           
-          # Verify values exist
-          if [ -z "$API_URL" ] || [ -z "$S3_BUCKET_NAME" ]; then
-            echo "Error: Failed to get Terraform outputs"
-            jq . outputs.json
+          # Validate outputs
+          if [[ -z "$API_URL" || -z "$S3_BUCKET_NAME" ]]; then
+            echo "::error::Failed to extract required outputs"
+            jq . tfstate.json
             exit 1
           fi
           
-          # Set environment variables
+          # Set outputs for GitHub environment
           echo "API_URL=$API_URL" >> $GITHUB_ENV
           echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> $GITHUB_ENV
           
           # Debug output
-          echo "Extracted S3 Bucket: $S3_BUCKET_NAME"
-          echo "Extracted API URL: $API_URL"
+          echo "::group::Terraform Outputs"
+          echo "API URL: $API_URL"
+          echo "S3 Bucket: $S3_BUCKET_NAME"
+          echo "::endgroup::"
 
-      - name: Verify Environment Variables
+      - name: Verify Deployment Assets
         run: |
-          echo "Verifying variables:"
-          echo "S3_BUCKET_NAME: $S3_BUCKET_NAME"
-          echo "API_URL: $API_URL"
-          if [ -z "$S3_BUCKET_NAME" ] || [ -z "$API_URL" ]; then
-            echo "Error: Required variables not set!"
-            exit 1
-          fi
+          echo "::group::File Verification"
+          ls -la frontend/
+          [ -f frontend/contacts.js ] || { echo "::error::contacts.js missing"; exit 1; }
+          [ -f frontend/analytics.js ] || { echo "::error::analytics.js missing"; exit 1; }
+          echo "::endgroup::"
 
-      - name: Inject API URL
+      - name: Inject API Endpoint
         run: |
           cd frontend
+          ESCAPED_API_URL=$(printf '%s\n' "$API_URL" | sed 's/[\/&]/\\&/g')
+          
           for file in contacts.js analytics.js; do
-            if [ ! -f "$file" ]; then
-              echo "Error: File $file not found"
-              exit 1
-            fi
-            sed -i "s#API_PLACEHOLDER#$API_URL#g" "$file"
-            echo "Updated $file with API URL"
+            sed -i "s/API_PLACEHOLDER/$ESCAPED_API_URL/g" "$file"
+            echo "Updated $file with API endpoint"
           done
 
-      - name: Upload to S3
+      - name: Deploy to S3
         run: |
-          # Final verification
-          if [ -z "$S3_BUCKET_NAME" ]; then
-            echo "Error: S3_BUCKET_NAME still not set!"
+          # Validate bucket name format
+          if [[ ! "$S3_BUCKET_NAME" =~ ^[a-z0-9.-]{3,63}$ ]]; then
+            echo "::error::Invalid S3 bucket name: $S3_BUCKET_NAME"
             exit 1
           fi
 
-          echo "Starting upload to s3://$S3_BUCKET_NAME"
-          
-          # First sync (non-HTML files)
+          echo "::group::S3 Sync Process"
+          # Sync static assets with caching
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
             --delete \
+            --acl public-read \
+            --cache-control "max-age=31536000" \
+            --exclude "*.html" \
+            --exclude "*.css" \
+            --exclude "*.js"
+
+          # Sync CSS/JS with shorter cache
+          aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
+            --delete \
+            --acl public-read \
             --cache-control "max-age=86400" \
-            --exclude "*.html"
-          
-          # Second sync (HTML files)
+            --include "*.css" \
+            --include "*.js"
+
+          # Sync HTML with no cache
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
             --delete \
+            --acl public-read \
             --cache-control "no-cache" \
             --include "*.html"
-          
-          echo "Deployment successful!"
+          echo "::endgroup::"
+
+          echo "::notice::Deployment complete!"
           echo "Website URL: http://$S3_BUCKET_NAME.s3-website-us-east-1.amazonaws.com"
 
-      - name: Final Debug Output
+      - name: Post-deployment verification
         run: |
-          echo "Final verification:"
-          echo "S3 Bucket: $S3_BUCKET_NAME"
-          echo "API URL: $API_URL"
+          echo "::group::Final Verification"
+          aws s3 ls s3://$S3_BUCKET_NAME/ --recursive --human-readable
+          curl -I http://$S3_BUCKET_NAME.s3-website-us-east-1.amazonaws.com
+          echo "::endgroup::"
