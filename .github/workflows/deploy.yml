@@ -64,9 +64,11 @@ jobs:
       - name: Inject API URL into frontend JS
         run: |
           cd terraform
-          API_URL=$(terraform output -raw analytics_api_url | sed -e 's/[\/&]/\\&/g')
+          RAW_API_URL=$(terraform output -raw analytics_api_url)
+          ESCAPED_API_URL=$(printf '%s\n' "$RAW_API_URL" | sed 's/[&/\]/\\&/g')
           cd ../frontend
-          sed -i "s|API_PLACEHOLDER|$API_URL|g" contacts.js
+          sed -i "s|API_PLACEHOLDER|$ESCAPED_API_URL|g" contacts.js
+          sed -i "s|API_PLACEHOLDER|$ESCAPED_API_URL|g" analytics.js
 
 
       - name: Upload static website to S3
