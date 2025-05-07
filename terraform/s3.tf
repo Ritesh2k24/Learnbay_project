@@ -13,6 +13,15 @@ resource "aws_s3_bucket" "portfolio" {
   }
 }
 
+resource "aws_s3_bucket_public_access_block" "allow_public_access" {
+  bucket = aws_s3_bucket.portfolio.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
 resource "aws_s3_bucket_ownership_controls" "ownership" {
   bucket = aws_s3_bucket.portfolio.id
 
@@ -21,11 +30,12 @@ resource "aws_s3_bucket_ownership_controls" "ownership" {
   }
 }
 
-
-
 resource "aws_s3_bucket_policy" "portfolio_policy" {
   bucket = aws_s3_bucket.portfolio.id
   policy = data.aws_iam_policy_document.allow_public_read.json
+
+  # ✅ Ensures public access block is disabled before applying policy
+  depends_on = [aws_s3_bucket_public_access_block.allow_public_access]
 }
 
 data "aws_iam_policy_document" "allow_public_read" {
@@ -44,13 +54,4 @@ data "aws_iam_policy_document" "allow_public_read" {
 
 resource "random_id" "suffix" {
   byte_length = 4
-}
-
-resource "aws_s3_bucket_public_access_block" "allow_public_access" {
-  bucket = aws_s3_bucket.portfolio.id
-
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
 }
