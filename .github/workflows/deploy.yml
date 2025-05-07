@@ -60,37 +60,19 @@ jobs:
           terraform output -raw s3_bucket_name >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
 
+      - name: Set clean API URL
+        id: set-api-url
+        run: |
+          cd terraform
+          echo "API_URL=$(terraform output -json | jq -r '.analytics_api_url.value')" >> $GITHUB_ENV
+
 
       - name: Inject API URL into frontend JS
         run: |
-          cd terraform
-          # Get clean API URL (first line only, remove debug info)
-          RAW_API_URL=$(terraform output -raw analytics_api_url | head -n 1 | tr -d '\r\n')
-    
-          # Escape special characters for sed (using | as delimiter)
-          ESCAPED_API_URL=$(printf '%s\n' "$RAW_API_URL" | sed 's/[&/\]/\\&/g; s/|/\\|/g')
-    
-          cd ../frontend
-          # Verify placeholder exists before substitution
-          if ! grep -q "API_PLACEHOLDER" contacts.js; then
-            echo "Error: API_PLACEHOLDER not found in contacts.js"
-            exit 1
-          fi
-          if ! grep -q "API_PLACEHOLDER" analytics.js; then
-            echo "Error: API_PLACEHOLDER not found in analytics.js"
-            exit 1
-          fi
-    
-          # Perform substitutions
-          sed -i "s|API_PLACEHOLDER|$ESCAPED_API_URL|g" contacts.js
-          sed -i "s|API_PLACEHOLDER|$ESCAPED_API_URL|g" analytics.js
-    
-          # Verify changes
-          echo "Updated API URL in contacts.js:"
-          grep "$RAW_API_URL" contacts.js
-          echo "Updated API URL in analytics.js:"
-          grep "$RAW_API_URL" analytics.js
-
+          cd frontend
+          for file in contacts.js analytics.js; do
+            sed -i "s#API_PLACEHOLDER#${{ env.API_URL }}#g" "$file"
+          done
 
       - name: Upload static website to S3
         run: |
