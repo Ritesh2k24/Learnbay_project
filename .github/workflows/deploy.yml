@@ -52,8 +52,14 @@ jobs:
         id: api
         run: |
           cd terraform
-          echo "API_URL=$(terraform output -raw analytics_api_url | tr -d '\r')" >> $GITHUB_ENV
-          echo "S3_BUCKET_NAME=$(terraform output -raw s3_bucket_name | tr -d '\r')" >> $GITHUB_ENV
+          echo 'API_URL<<EOF' >> $GITHUB_ENV
+          terraform output -raw analytics_api_url >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+          echo 'S3_BUCKET_NAME<<EOF' >> $GITHUB_ENV
+          terraform output -raw s3_bucket_name >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
 
       - name: Inject API URL into frontend JS
         run: |
