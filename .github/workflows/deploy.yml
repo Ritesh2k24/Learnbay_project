@@ -12,6 +12,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install jq (for JSON parsing)
+        run: sudo apt-get install -y jq
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -22,15 +25,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-1  # Fixed typo (was 'region')
 
-      - name: Zip contact form Lambda function
+      - name: Zip Lambda functions
         run: |
           mkdir -p lambda_zips
           zip -j lambda_zips/contact_handler.zip lambda/contact_handler.py
-
-      - name: Zip visitor logger Lambda function
-        run: |
           zip -j lambda_zips/visitor_logger.zip lambda/visitor_logger.py
 
       - name: Terraform Init
@@ -48,52 +48,81 @@ jobs:
           cd terraform
           terraform apply -auto-approve
 
-      - name: Set clean Terraform outputs
-        id: set-outputs
+      - name: Set and Verify Terraform Outputs
+        id: tf-outputs
         run: |
           cd terraform
-          # Get clean outputs using JSON
-          echo "API_URL=$(terraform output -json | jq -r '.analytics_api_url.value')" >> $GITHUB_ENV
-          echo "S3_BUCKET_NAME=$(terraform output -json | jq -r '.s3_bucket_name.value')" >> $GITHUB_ENV
-          echo "Extracted S3 Bucket: $S3_BUCKET_NAME"
-
-      - name: Inject API URL into frontend JS
-        run: |
-          cd frontend
-          # Verify files exist
-          if [ ! -f contacts.js ] || [ ! -f analytics.js ]; then
-            echo "Error: Frontend files not found"
+          # Get raw JSON output
+          terraform output -json > outputs.json
+          
+          # Extract values safely
+          API_URL=$(jq -r '.analytics_api_url.value' outputs.json)
+          S3_BUCKET_NAME=$(jq -r '.s3_bucket_name.value' outputs.json)
+          
+          # Verify values exist
+          if [ -z "$API_URL" ] || [ -z "$S3_BUCKET_NAME" ]; then
+            echo "Error: Failed to get Terraform outputs"
+            jq . outputs.json
             exit 1
           fi
           
-          # Perform substitution
-          for file in contacts.js analytics.js; do
-            sed -i "s#API_PLACEHOLDER#${{ env.API_URL }}#g" "$file"
-            echo "Updated $file with API URL: ${{ env.API_URL }}"
-          done
+          # Set environment variables
+          echo "API_URL=$API_URL" >> $GITHUB_ENV
+          echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> $GITHUB_ENV
+          
+          # Debug output
+          echo "Extracted S3 Bucket: $S3_BUCKET_NAME"
+          echo "Extracted API URL: $API_URL"
 
-      - name: Upload static website to S3
+      - name: Verify Environment Variables
         run: |
-          # Verify bucket name is set
-          if [ -z "$S3_BUCKET_NAME" ]; then
-            echo "Error: S3_BUCKET_NAME not set"
+          echo "Verifying variables:"
+          echo "S3_BUCKET_NAME: $S3_BUCKET_NAME"
+          echo "API_URL: $API_URL"
+          if [ -z "$S3_BUCKET_NAME" ] || [ -z "$API_URL" ]; then
+            echo "Error: Required variables not set!"
             exit 1
           fi
 
-          # Sync with proper caching headers
-          echo "Uploading files to s3://$S3_BUCKET_NAME"
+      - name: Inject API URL
+        run: |
+          cd frontend
+          for file in contacts.js analytics.js; do
+            if [ ! -f "$file" ]; then
+              echo "Error: File $file not found"
+              exit 1
+            fi
+            sed -i "s#API_PLACEHOLDER#$API_URL#g" "$file"
+            echo "Updated $file with API URL"
+          done
+
+      - name: Upload to S3
+        run: |
+          # Final verification
+          if [ -z "$S3_BUCKET_NAME" ]; then
+            echo "Error: S3_BUCKET_NAME still not set!"
+            exit 1
+          fi
+
+          echo "Starting upload to s3://$S3_BUCKET_NAME"
+          
+          # First sync (non-HTML files)
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
             --delete \
             --cache-control "max-age=86400" \
-            --exclude "*.html" && \
+            --exclude "*.html"
+          
+          # Second sync (HTML files)
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
             --delete \
             --cache-control "no-cache" \
             --include "*.html"
+          
+          echo "Deployment successful!"
+          echo "Website URL: http://$S3_BUCKET_NAME.s3-website-us-east-1.amazonaws.com"
 
-
-          echo "Website deployed successfully to:"
-          echo "http://$S3_BUCKET_NAME.s3-website-us-east-1.amazonaws.com"
-
-      - name: Print API URL (for debugging)
-        run: echo "API Gateway URL is $API_URL"
+      - name: Final Debug Output
+        run: |
+          echo "Final verification:"
+          echo "S3 Bucket: $S3_BUCKET_NAME"
+          echo "API URL: $API_URL"
