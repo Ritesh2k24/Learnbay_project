@@ -66,7 +66,7 @@ jobs:
           cd terraform
           API_URL=$(terraform output -raw analytics_api_url)
           cd ../frontend
-          sed -i "s|API_PLACEHOLDER|$API_URL|g" contacts.js
+          sed -i "s#API_PLACEHOLDER#${API_URL}#g" contacts.js
 
 
       - name: Upload static website to S3
