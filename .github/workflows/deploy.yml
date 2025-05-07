@@ -48,37 +48,52 @@ jobs:
           cd terraform
           terraform apply -auto-approve
 
-      - name: Export Terraform outputs to environment
-        id: api
+      - name: Set clean Terraform outputs
+        id: set-outputs
         run: |
           cd terraform
-          echo 'API_URL<<EOF' >> $GITHUB_ENV
-          terraform output -raw analytics_api_url >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
-
-          echo 'S3_BUCKET_NAME<<EOF' >> $GITHUB_ENV
-          terraform output -raw s3_bucket_name >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
-
-      - name: Set clean API URL
-        id: set-api-url
-        run: |
-          cd terraform
+          # Get clean outputs using JSON
           echo "API_URL=$(terraform output -json | jq -r '.analytics_api_url.value')" >> $GITHUB_ENV
-
+          echo "S3_BUCKET_NAME=$(terraform output -json | jq -r '.s3_bucket_name.value')" >> $GITHUB_ENV
+          echo "Extracted S3 Bucket: $S3_BUCKET_NAME"
 
       - name: Inject API URL into frontend JS
         run: |
           cd frontend
+          # Verify files exist
+          if [ ! -f contacts.js ] || [ ! -f analytics.js ]; then
+            echo "Error: Frontend files not found"
+            exit 1
+          fi
+          
+          # Perform substitution
           for file in contacts.js analytics.js; do
             sed -i "s#API_PLACEHOLDER#${{ env.API_URL }}#g" "$file"
+            echo "Updated $file with API URL: ${{ env.API_URL }}"
           done
 
       - name: Upload static website to S3
         run: |
-          aws s3 sync frontend/ s3://$S3_BUCKET_NAME --delete
+          # Verify bucket name is set
+          if [ -z "$S3_BUCKET_NAME" ]; then
+            echo "Error: S3_BUCKET_NAME not set"
+            exit 1
+          fi
 
-      
+          # Sync with proper caching headers
+          echo "Uploading files to s3://$S3_BUCKET_NAME"
+          aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
+            --delete \
+            --cache-control "max-age=86400" \
+            --exclude "*.html" && \
+          aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
+            --delete \
+            --cache-control "no-cache" \
+            --include "*.html"
+
+
+          echo "Website deployed successfully to:"
+          echo "http://$S3_BUCKET_NAME.s3-website-us-east-1.amazonaws.com"
+
       - name: Print API URL (for debugging)
         run: echo "API Gateway URL is $API_URL"
-
