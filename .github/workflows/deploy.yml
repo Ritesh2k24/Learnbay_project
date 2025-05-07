@@ -55,6 +55,14 @@ jobs:
           echo "API_URL=$(terraform output -raw analytics_api_url)" >> $GITHUB_ENV
           echo "S3_BUCKET_NAME=$(terraform output -raw s3_bucket_name)" >> $GITHUB_ENV
 
+      - name: Inject API URL into frontend JS
+        run: |
+          cd terraform
+          API_URL=$(terraform output -raw analytics_api_url)
+          cd ../frontend
+          sed -i "s|API_PLACEHOLDER|$API_URL|g" contacts.js
+
+
       - name: Upload static website to S3
         run: |
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME --delete
