@@ -48,17 +48,17 @@ jobs:
           cd terraform
           terraform apply -auto-approve
 
-      - name: Get API URL output from Terraform
+      - name: Export Terraform outputs to environment
         id: api
         run: |
           cd terraform
           echo "API_URL=$(terraform output -raw analytics_api_url)" >> $GITHUB_ENV
+          echo "S3_BUCKET_NAME=$(terraform output -raw s3_bucket_name)" >> $GITHUB_ENV
 
 
       - name: Upload static website to S3
         run: |
-          cd terraform
-          aws s3 sync frontend/ s3://$(terraform output -raw s3_bucket_name) --delete
+          aws s3 sync frontend/ s3://$S3_BUCKET_NAME --delete
 
       
       - name: Print API URL (for debugging)
