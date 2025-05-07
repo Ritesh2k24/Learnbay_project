@@ -50,11 +50,13 @@ jobs:
 
       - name: Upload static website to S3
         run: |
+          cd terraform
           aws s3 sync frontend/ s3://$(terraform output -raw s3_bucket_name) --delete
 
       - name: Get API URL output from Terraform
         id: api
         run: |
+          cd terraform
           echo "API_URL=$(terraform output -raw analytics_api_url)" >> $GITHUB_ENV
 
       - name: Print API URL (for debugging)
