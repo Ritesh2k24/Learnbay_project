@@ -5,7 +5,7 @@ document.getElementById("contact-form").addEventListener("submit", async functio
     const email = document.getElementById("email").value;
     const message = document.getElementById("message").value;
   
-    const response = await fetch("https://<your-api>.execute-api.us-east-1.amazonaws.com/submit", {
+    const response = await fetch("API_PLACEHOLDER/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, message })
