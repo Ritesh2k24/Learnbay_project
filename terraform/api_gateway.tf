@@ -1,9 +1,15 @@
 resource "aws_apigatewayv2_api" "contact_api" {
   name          = "ContactFormAPI"
   protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = ["*"]
+    allow_methods = ["POST", "OPTIONS"]
+    allow_headers = ["content-type"]
+  }
 }
 
-# Contact Form Integration
+# Contact form Lambda integration
 resource "aws_apigatewayv2_integration" "lambda_integration" {
   api_id                = aws_apigatewayv2_api.contact_api.id
   integration_type      = "AWS_PROXY"
@@ -16,12 +22,6 @@ resource "aws_apigatewayv2_route" "contact_route" {
   api_id    = aws_apigatewayv2_api.contact_api.id
   route_key = "POST /submit"
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-
-  cors_configuration {
-    allow_origins = ["*"]
-    allow_methods = ["POST", "OPTIONS"]
-    allow_headers = ["content-type"]
-  }
 }
 
 resource "aws_lambda_permission" "apigw_lambda" {
@@ -32,7 +32,7 @@ resource "aws_lambda_permission" "apigw_lambda" {
   source_arn    = "${aws_apigatewayv2_api.contact_api.execution_arn}/*/*"
 }
 
-# Analytics Integration
+# Analytics Lambda integration
 resource "aws_apigatewayv2_integration" "analytics_integration" {
   api_id                = aws_apigatewayv2_api.contact_api.id
   integration_type      = "AWS_PROXY"
@@ -45,12 +45,6 @@ resource "aws_apigatewayv2_route" "analytics_route" {
   api_id    = aws_apigatewayv2_api.contact_api.id
   route_key = "POST /analytics"
   target    = "integrations/${aws_apigatewayv2_integration.analytics_integration.id}"
-
-  cors_configuration {
-    allow_origins = ["*"]
-    allow_methods = ["POST", "OPTIONS"]
-    allow_headers = ["content-type"]
-  }
 }
 
 resource "aws_lambda_permission" "apigw_analytics_lambda" {
