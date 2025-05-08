@@ -116,7 +116,6 @@ jobs:
           # Sync static assets with caching
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
             --delete \
-            --acl public-read \
             --cache-control "max-age=31536000" \
             --exclude "*.html" \
             --exclude "*.css" \
@@ -125,7 +124,6 @@ jobs:
           # Sync CSS/JS with shorter cache
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
             --delete \
-            --acl public-read \
             --cache-control "max-age=86400" \
             --include "*.css" \
             --include "*.js"
@@ -133,7 +131,6 @@ jobs:
           # Sync HTML with no cache
           aws s3 sync frontend/ s3://$S3_BUCKET_NAME/ \
             --delete \
-            --acl public-read \
             --cache-control "no-cache" \
             --include "*.html"
           echo "::endgroup::"
