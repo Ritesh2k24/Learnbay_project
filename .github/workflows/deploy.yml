@@ -100,8 +100,8 @@ jobs:
           CONTACTS_API_URL=$(terraform output -raw contact_api_url | sed 's/[\/&]/\\&/g')
           ANALYTICS_API_URL=$(terraform output -raw analytics_api_url | sed 's/[\/&]/\\&/g')
 
-          sed -i "s|CONTACTS_API_PLACEHOLDER|$CONTACTS_API_URL|g" contacts.js
-          sed -i "s|ANALYTICS_API_PLACEHOLDER|$ANALYTICS_API_URL|g" analytics.js
+          sed -i "s/CONTACTS_API_PLACEHOLDER/$CONTACTS_API_URL/g" contacts.js
+          sed -i "s/ANALYTICS_API_PLACEHOLDER/$ANALYTICS_API_URL/g" analytics.js
           echo "Injected contact and analytics API endpoints"
 
 
