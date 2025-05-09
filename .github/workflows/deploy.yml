@@ -97,15 +97,15 @@ jobs:
       - name: Inject API Endpoints
         run: |
           cd frontend
-          RAW_CONTACTS_API_URL=$(terraform output -raw contact_api_url)
-          RAW_ANALYTICS_API_URL=$(terraform output -raw analytics_api_url)
-
-          ESCAPED_CONTACTS_API_URL=$(printf '%s\n' "$RAW_CONTACTS_API_URL" | sed 's/[&/\]/\\&/g')
-          ESCAPED_ANALYTICS_API_URL=$(printf '%s\n' "$RAW_ANALYTICS_API_URL" | sed 's/[&/\]/\\&/g')
-
-          sed -i "s|CONTACTS_API_PLACEHOLDER|$ESCAPED_CONTACTS_API_URL|g" contacts.js
-          sed -i "s|ANALYTICS_API_PLACEHOLDER|$ESCAPED_ANALYTICS_API_URL|g" analytics.js
-          echo "Injected contact and analytics API endpoints"
+          ESCAPED_CONTACTS_URL=$(printf '%s\n' "$CONTACTS_API_URL" | sed 's/[\/&]/\\&/g')
+          ESCAPED_ANALYTICS_URL=$(printf '%s\n' "$ANALYTICS_API_URL" | sed 's/[\/&]/\\&/g')
+    
+          # Process files
+          sed -i.bak \
+            -e "s/CONTACTS_API_PLACEHOLDER/$ESCAPED_CONTACTS_URL/g" \
+            -e "s/ANALYTICS_API_PLACEHOLDER/$ESCAPED_ANALYTICS_URL/g" \
+            contacts.js analytics.js
+          rm -f *.bak
 
 
       - name: Deploy to S3
