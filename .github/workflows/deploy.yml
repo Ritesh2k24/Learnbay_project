@@ -94,15 +94,16 @@ jobs:
           [ -f frontend/analytics.js ] || { echo "::error::analytics.js missing"; exit 1; }
           echo "::endgroup::"
 
-      - name: Inject API Endpoint
+      - name: Inject API Endpoints
         run: |
           cd frontend
-          ESCAPED_API_URL=$(printf '%s\n' "$API_URL" | sed 's/[\/&]/\\&/g')
-          
-          for file in contacts.js analytics.js; do
-            sed -i "s/API_PLACEHOLDER/$ESCAPED_API_URL/g" "$file"
-            echo "Updated $file with API endpoint"
-          done
+          CONTACTS_API_URL=$(terraform output -raw contact_api_url | sed 's/[\/&]/\\&/g')
+          ANALYTICS_API_URL=$(terraform output -raw analytics_api_url | sed 's/[\/&]/\\&/g')
+
+          sed -i "s|CONTACTS_API_PLACEHOLDER|$CONTACTS_API_URL|g" contacts.js
+          sed -i "s|ANALYTICS_API_PLACEHOLDER|$ANALYTICS_API_URL|g" analytics.js
+          echo "Injected contact and analytics API endpoints"
+
 
       - name: Deploy to S3
         run: |

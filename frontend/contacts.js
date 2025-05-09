@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const email = document.getElementById("email").value;
       const message = document.getElementById("message").value;
 
-      const response = await fetch("API_PLACEHOLDER/submit", {
+      const response = await fetch("CONTACTS_API_PLACEHOLDER/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, message })
