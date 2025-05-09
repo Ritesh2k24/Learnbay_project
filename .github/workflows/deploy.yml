@@ -96,16 +96,28 @@ jobs:
 
       - name: Inject API Endpoints
         run: |
-          cd frontend
-          ESCAPED_CONTACTS_URL=$(printf '%s\n' "$CONTACTS_API_URL" | sed 's/[\/&]/\\&/g')
-          ESCAPED_ANALYTICS_URL=$(printf '%s\n' "$ANALYTICS_API_URL" | sed 's/[\/&]/\\&/g')
+           cd terraform
+           # Get the base API URL (no trailing slash)
+           BASE_URL=$(terraform output -raw analytics_api_url | sed 's/\/$//')
     
-          # Process files
-          sed -i.bak \
-            -e "s/CONTACTS_API_PLACEHOLDER/$ESCAPED_CONTACTS_URL/g" \
-            -e "s/ANALYTICS_API_PLACEHOLDER/$ESCAPED_ANALYTICS_URL/g" \
-            contacts.js analytics.js
-          rm -f *.bak
+           # Escape for sed (using # as delimiter)
+           ESCAPED_URL=$(printf '%s\n' "$BASE_URL" | sed 's/[\/&#]/\\&/g')
+    
+           cd ../frontend
+    
+           # Update contacts.js with /submit endpoint
+           sed -i.bak "s#API_PLACEHOLDER/submit#$ESCAPED_URL/submit#g" contacts.js
+    
+           # Update analytics.js with /analytics endpoint
+           sed -i.bak "s#API_PLACEHOLDER/analytics#$ESCAPED_URL/analytics#g" analytics.js
+    
+           # Cleanup backups and verify
+           rm *.bak
+           echo "Injected API Endpoints:"
+           echo "Contact Form: $BASE_URL/submit"
+           grep -A 2 "fetch" contacts.js
+           echo "Analytics: $BASE_URL/analytics"
+           grep -A 2 "fetch" analytics.js
 
 
       - name: Deploy to S3

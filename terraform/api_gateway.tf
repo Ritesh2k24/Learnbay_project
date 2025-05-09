@@ -62,5 +62,5 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 
 output "analytics_api_url" {
-  value = "${aws_apigatewayv2_api.contact_api.api_endpoint}/analytics"
+  value = "${aws_apigatewayv2_api.contact_api.api_endpoint}"
 }
