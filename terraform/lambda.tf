@@ -18,6 +18,26 @@ resource "aws_iam_role_policy_attachment" "lambda_dynamo_access" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
 }
 
+
+resource "aws_iam_role_policy" "lambda_logs_inline" {
+  name = "lambda-logs-policy"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      Resource = "arn:aws:logs:*:*:*"
+    }]
+  })
+}
+
+
 resource "aws_lambda_function" "contact_form_handler" {
   filename         = "${path.module}/../lambda/contact_handler.zip"
   function_name    = "contactFormHandler"
